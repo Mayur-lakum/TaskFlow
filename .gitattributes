@@ -1,0 +1,40 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# Java
+*.java text
+*.properties text
+*.xml text
+*.sql text
+
+# Frontend
+*.js text
+*.jsx text
+*.ts text
+*.tsx text
+*.css text
+*.scss text
+*.html text
+*.json text
+*.md text
+
+# Shell
+*.sh text eol=lf
+
+# Windows Scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text
+
+# Documents
+*.pdf binary
+
+# Archives
+*.zip binary
+*.jar binary
