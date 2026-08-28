@@ -6,6 +6,8 @@ import com.mayur.taskflowai.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.springframework.http.HttpMethod;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,20 +41,30 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
-        CorsConfiguration configuration = new CorsConfiguration();
+        CorsConfiguration configuration =
+                new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "https://task-flow-six-ochre.vercel.app"
+        /*
+         * Frontend origins
+         *
+         * We use allowedOriginPatterns because Vercel
+         * creates different deployment URLs.
+         */
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "https://*.vercel.app"
         ));
 
+        /*
+         * HTTP methods allowed from frontend.
+         */
         configuration.setAllowedMethods(List.of(
                 "GET",
                 "POST",
@@ -62,14 +74,26 @@ public class SecurityConfig {
                 "OPTIONS"
         ));
 
+        /*
+         * Allow request headers such as:
+         *
+         * Authorization
+         * Content-Type
+         */
         configuration.setAllowedHeaders(List.of("*"));
 
+        /*
+         * Allow browser credentials.
+         */
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
 
         return source;
     }
@@ -88,20 +112,62 @@ public class SecurityConfig {
             throws Exception {
 
         http
-                .cors(cors -> {})
-                .csrf(csrf -> csrf.disable())
 
+                /*
+                 * Enable CORS.
+                 */
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
+                )
+
+                /*
+                 * REST API → CSRF disabled.
+                 */
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+
+                /*
+                 * JWT authentication is stateless.
+                 */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS))
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
 
+                /*
+                 * Authorization rules.
+                 */
                 .authorizeHttpRequests(auth -> auth
 
-                        // Authentication
-                        .requestMatchers("/api/auth/**")
+                        /*
+                         * VERY IMPORTANT:
+                         *
+                         * Browser sends OPTIONS before
+                         * POST when doing CORS.
+                         *
+                         * Allow it without authentication.
+                         */
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        )
                         .permitAll()
 
-                        // Swagger
+                        /*
+                         * Login APIs.
+                         */
+                        .requestMatchers(
+                                "/api/auth/**"
+                        )
+                        .permitAll()
+
+                        /*
+                         * Swagger.
+                         */
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -112,23 +178,47 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
-                        // Employee APIs
-                        .requestMatchers("/api/v1/employees/**")
-                        .hasAnyRole("ADMIN", "MANAGER")
+                        /*
+                         * Employee APIs.
+                         */
+                        .requestMatchers(
+                                "/api/v1/employees/**"
+                        )
+                        .hasAnyRole(
+                                "ADMIN",
+                                "MANAGER"
+                        )
 
-                        // Project APIs
-                        .requestMatchers("/api/v1/projects/**")
-                        .hasAnyRole("ADMIN", "MANAGER")
+                        /*
+                         * Project APIs.
+                         */
+                        .requestMatchers(
+                                "/api/v1/projects/**"
+                        )
+                        .hasAnyRole(
+                                "ADMIN",
+                                "MANAGER"
+                        )
 
-                        // Skill APIs
-                        .requestMatchers("/api/v1/skills/**")
+                        /*
+                         * Skill APIs.
+                         */
+                        .requestMatchers(
+                                "/api/v1/skills/**"
+                        )
                         .hasRole("ADMIN")
 
-                        // Everything else
+                        /*
+                         * Everything else requires login.
+                         */
                         .anyRequest()
                         .authenticated()
                 )
 
+                /*
+                 * JWT filter runs before Spring's
+                 * username/password authentication filter.
+                 */
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
