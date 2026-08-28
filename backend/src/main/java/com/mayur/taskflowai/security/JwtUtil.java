@@ -14,7 +14,7 @@ public class JwtUtil {
     // 🟢 Secret key used to sign the token
     private static final SecretKey SECRET_KEY =
             Keys.hmacShaKeyFor(
-                    "mysecretkeymysecretkeymysecretkey123456".getBytes()
+                    System.getenv("JWT_SECRET").getBytes()
             );
 
     // 🟢 Token validity (24 hours)
